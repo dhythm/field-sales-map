@@ -103,7 +103,7 @@ npm run test:e2e
 PLAYWRIGHT_CHROMIUM_EXECUTABLE=/usr/bin/chromium npm run test:e2e
 ```
 
-ローカルでtypecheck・ESLint・Vitest・本番build・Playwright（desktop/mobile）を実施。具体的な結果と制約は[検証記録](VERIFICATION.md)に記載します。テストは実APIやOSMへ負荷をかけません。スクリーンショットはgit対象外の`test-results/`へ保存し、GitHub Actionsでは14日間のartifactにします。
+ローカルでtypecheck・ESLint・Vitest・本番build・Playwright（desktop/mobile）を実施。具体的な結果と制約は[検証記録](VERIFICATION.md)に記載します。通常CIのテストはAPIをモックし、OSMタイル取得を遮断します。実通信は別の手動workflowでのみ確認します。スクリーンショットはgit対象外の`test-results/`へ保存し、GitHub Actionsでは14日間のartifactにします。
 
 CIはpush・pull requestで実行します。各commitの結果は[GitHub Actions](https://github.com/dhythm/field-sales-map/actions)で確認できます。ローカル検証とGitHub CIの結果は区別してください。
 
@@ -126,14 +126,20 @@ CIはpush・pull requestで実行します。各commitの結果は[GitHub Action
 
 公式CLI例：`claude mcp add --transport http japan-facilities https://api.openpoiapi.com/mcp`。公開ツールは`search_facilities`と`dataset_info`。クライアントによって設定形式が違うので各公式手順に合わせてください。AIクライアント側の契約・料金、渡す情報の範囲は別途判断が必要です。本アプリはMCP設定の書き込みもAI契約も行いません。
 
-## 限界と保留タスク
+## 限界・残件・将来案
 
-- 営業時間・口コミ・連絡先・商談決裁者・徒歩経路は提供されません。閉業、位置ずれ、欠損、重複、未収録を前提に現地確認してください。営業成果や網羅性を保証しません。
-- 同一施設の将来の情報変更・曖昧一致の統合、チーム共有、同期、CRM連携、CSV、PWA、経路最適化は未実装。
-- **公開コード**：GitHub CLIは環境のForbiddenで利用できなかったため、既存の正規GitHubコネクタから今回専用の新規public repositoryへ公開しました。既存repoへの代替pushはしていません。
-- **実通信検証**：この環境でAPIスモークは403（envoy）になり、実API成功・実CORS・実タイル表示は未確認。接続可能な環境で少数リクエストの実機確認が必要です。
-- **公開サイト**：ホストと利用規模の確認が必要。未承認のデプロイ・有料契約・認証情報作成は行っていません。
-- Safari/Firefoxおよび実スマートフォン端末は未検証。モバイル検証はChromiumのPixel 7エミュレーションです。
+営業時間・口コミ・連絡先・商談決裁者・徒歩経路は提供されません。閉業、位置ずれ、欠損、重複、未収録を前提に現地確認してください。営業成果や網羅性を保証しません。
+
+**完了した範囲**：今回専用の新規public repositoryへのコード公開、通常CI、独立レビューの指摘修正、実API HTTP・実ブラウザCORS/候補表示・OSM単一タイルHTTP確認。CLIの制限は既存の正規GitHubコネクタで解決し、既存repoには変更していません。
+
+**Web公開を進める場合の必須残件**：
+
+- 公開先・利用規模・地図配信条件を確定し、デプロイ承認を得る。現時点でサイトは未デプロイで、有料契約や認証情報作成も行っていません。
+- 通常の対話ブラウザで実背景地図と帰属表示を目視確認する。単一タイルHTTP成功は、地図全体の表示確認の代わりにはなりません。
+
+**任意の将来案・追加検証**：同一施設の情報変更/曖昧一致への対応、チーム共有・同期・CRM/MCP連携、CSV、PWA、経路最適化。Safari/Firefox・実スマートフォン端末も未検証です。現在のモバイル検証はChromiumのPixel 7エミュレーションです。これらはMVPの起動条件ではありません。
+
+Libraryへの追加転送は環境のnetworkエラーで保留ですが、コードはGitHub、画像と検証証跡はCI artifactから取得できるため、実装・利用を阻害しません。
 
 ## 手動の実通信スモーク
 
@@ -144,3 +150,5 @@ GitHubの「Run workflow」で`confirm_live_requests=true`を選ぶと、公開�
 `check_single_tile=true`を追加すると、識別可能なUser-Agent・Refererで東京駅のOSMタイル1画像だけをHTTP確認します。ブラウザのタイル取得は遮断し、地図移動・走査・プリフェッチはしません。これは**タイル1枚のHTTP確認**であり、実地図全体の表示確認ではありません。
 
 結果はworkflow summaryと`manual-live-smoke` artifact内の`report.json`・画面に保存します。外部API障害をコードテスト失敗と混同しないため、workflowの緑色だけで成功と判断せず、各`outcome`・HTTP status・CORS・表示件数を確認してください。メモ・顧客情報・APIレスポンス全文・認証情報は収集しません。
+
+2026-10-03の[実通信検証](https://github.com/dhythm/field-sales-map/actions/runs/37142175574)（commit `d3736f25d6f470eed1ea727efa88cf004ee4e9bc`）では、API HTTP（200・2件・CORS `*`）、実ブラウザCORS＋候補50件表示、OSM単一PNGタイルHTTPがすべて成功しました。実背景地図の視覚確認は意図して行っていません。詳細は[検証記録](VERIFICATION.md)を参照してください。
