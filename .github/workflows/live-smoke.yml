@@ -1,0 +1,44 @@
+name: Manual live smoke
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_live_requests:
+        description: "Approve at most 2 public-area API searches (no retries)"
+        type: boolean
+        required: true
+        default: false
+      check_single_tile:
+        description: "Also check one Tokyo-area OSM tile over HTTP (no map traversal)"
+        type: boolean
+        required: true
+        default: false
+permissions:
+  contents: read
+concurrency:
+  group: manual-live-smoke
+  cancel-in-progress: false
+jobs:
+  observe:
+    if: inputs.confirm_live_requests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - name: Observe API, browser CORS, and optional single tile
+        run: node scripts/live-smoke.mjs
+        env:
+          CONFIRM_LIVE_REQUESTS: ${{ inputs.confirm_live_requests }}
+          CHECK_SINGLE_TILE: ${{ inputs.check_single_tile }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: manual-live-smoke
+          path: live-smoke-results/
+          retention-days: 14

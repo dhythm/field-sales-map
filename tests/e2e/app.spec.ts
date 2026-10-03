@@ -264,3 +264,90 @@ test("配布画面から完全なライセンスとNOTICEを開ける", async ({
     expect(await response.text()).toContain(expected);
   }
 });
+
+test("遅延検索の完了時にも保存失敗したメモを保護する", async ({ page }) => {
+  await demo(page);
+  await page.getByRole("button", { name: "＋ 候補に保存" }).first().click();
+  await live(page);
+  let release: () => void = () => {};
+  const gate = new Promise<void>((resolve) => (release = resolve));
+  await page.route("https://api.openpoiapi.com/**", async (route) => {
+    await gate;
+    await route.fulfill({ json: { results: [fixture] } });
+  });
+  await page.getByRole("button", { name: "このエリアで探す" }).click();
+  await page.evaluate(() => {
+    Storage.prototype.setItem = () => {
+      throw new DOMException("quota", "QuotaExceededError");
+    };
+  });
+  await page.locator("textarea").fill("検索を待っている間の未保存メモ");
+  await expect(page.locator(".memo-state")).toContainText("未保存");
+  release();
+  await expect(page.locator("#cancel")).toBeHidden();
+  await expect(page.locator("#message")).toContainText("未保存の入力");
+  await expect(page.locator("textarea")).toHaveValue(
+    "検索を待っている間の未保存メモ",
+  );
+  await expect(page.locator("textarea")).toHaveAttribute(
+    "data-unsaved",
+    "true",
+  );
+  await expect(page.locator(".card")).toHaveCount(6);
+  expect(
+    await page.evaluate(() =>
+      window.dispatchEvent(new Event("beforeunload", { cancelable: true })),
+    ),
+  ).toBe(false);
+});
+
+test("遅延JSON読取の完了時にも保存失敗したメモを保護する", async ({ page }) => {
+  await demo(page);
+  await page.getByRole("button", { name: "＋ 候補に保存" }).first().click();
+  const raw = await page.evaluate(() =>
+    localStorage.getItem("field-sales-map:v1")!,
+  );
+  await page.evaluate(() => {
+    const original = File.prototype.text;
+    let release: () => void = () => {};
+    const gate = new Promise<void>((resolve) => (release = resolve));
+    (window as unknown as { releaseRead: () => void }).releaseRead = release;
+    File.prototype.text = async function () {
+      await gate;
+      return original.call(this);
+    };
+  });
+  await page
+    .locator("#import")
+    .setInputFiles({
+      name: "backup.json",
+      mimeType: "application/json",
+      buffer: Buffer.from(raw),
+    });
+  await page.evaluate(() => {
+    Storage.prototype.setItem = () => {
+      throw new DOMException("quota", "QuotaExceededError");
+    };
+  });
+  await page.locator("textarea").fill("ファイルを待っている間の未保存メモ");
+  await page.evaluate(() =>
+    (window as unknown as { releaseRead: () => void }).releaseRead(),
+  );
+  await expect(page.locator("#message")).toContainText("未保存の入力");
+  await expect(page.locator("textarea")).toHaveValue(
+    "ファイルを待っている間の未保存メモ",
+  );
+  await expect(page.locator("textarea")).toHaveAttribute(
+    "data-unsaved",
+    "true",
+  );
+  await expect(page.locator(".card")).toHaveCount(6);
+  expect(
+    await page.evaluate(() => localStorage.getItem("field-sales-map:v1")),
+  ).toBe(raw);
+  expect(
+    await page.evaluate(() =>
+      window.dispatchEvent(new Event("beforeunload", { cancelable: true })),
+    ),
+  ).toBe(false);
+});

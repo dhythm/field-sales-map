@@ -384,6 +384,8 @@ async function search(useBounds = false) {
           active.signal,
         );
       if (run !== sequence) return;
+      // A draft may have become unsaved while the request was in flight.
+      if (!canNavigate()) return;
       results = response.facilities;
       const missing = results.filter(
         (f) => f.lat === null || f.lng === null,
@@ -489,7 +491,10 @@ $("#import").onchange = async () => {
   try {
     if (!canNavigate()) return;
     if (file.size > 5_000_000) throw new Error("ファイルは5MBまでです。");
-    const incoming = parseBackup(await file.text());
+    const raw = await file.text();
+    // Recheck after asynchronous file reading, before merging or re-rendering.
+    if (!canNavigate()) return;
+    const incoming = parseBackup(raw);
     const merged = mergeCandidates(candidates, incoming);
     if (commit(merged)) {
       tab = "saved";

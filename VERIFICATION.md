@@ -7,9 +7,9 @@
 - Node.js v24.19.0。
 - `npm run typecheck`：成功。
 - `npm run lint`：ESLint 10、成功。
-- `npm test`：Vitest 10テスト成功。
+- `npm test`：Vitest 11テスト成功。
 - `npm run build`：TypeScript + Viteの本番ビルド成功。
-- `E2E_PREVIEW=1 PLAYWRIGHT_CHROMIUM_EXECUTABLE=/usr/bin/chromium npm run test:e2e`：本番配信物を対象にdesktop / Pixel 7エミュレーションで20テスト成功（20.8秒）。
+- `E2E_PREVIEW=1 PLAYWRIGHT_CHROMIUM_EXECUTABLE=/usr/bin/chromium npm run test:e2e`：本番配信物を対象にdesktop / Pixel 7エミュレーションで24テスト成功（検索応答・JSON読取中の未保存メモ保護を含む）。
 - `npm audit` および `npm audit --omit=dev`：検証時点で脆弱性0件。
 - スクリーンショットのPC・モバイル表示を目視確認。画像はgit対象外の `test-results/` に保存。
 - 実行ブラウザ：既設のChromium 151.0.7922.173。Playwrightのブラウザ追加ダウンロードは403 `Domain forbidden`のため利用せず。CIでは通常のPlaywright Chromiumインストールを使う。
@@ -50,3 +50,9 @@ APIへの成功応答、ブラウザでの実CORS、実OSMタイル表示は未�
 3. Library転送は標準アップロードヘルパーの最初のツール照会がnetworkエラーで停止。保存完了・library_file_idは未確認。ソースは上記GitHubから取得できます。画像・ブラウザ検証証跡はCI artifactへ保存する定義です。
 
 未検証：Safari、Firefox、実スマートフォン、真のオフライン再起動、同時タブの完全なトランザクション保証、MCPクライアント連携。
+
+## 独立レビュー後の修正
+
+検索開始時だけでなくAPI応答到着時、JSONファイル読取完了時にも未保存入力を再確認し、再描画によるメモ喪失を防止。遅延応答/読取の間に保存が容量不足で失敗するケースをPC・モバイルで回帰検証し、textarea本文・未保存フラグ・beforeunload保護が残ることを確認。座標は有限numberまたは非空の10進numeric stringに限定し、空白・配列・boolean等をゼロに変換しない。
+
+通常CIと分離した`Manual live smoke`（`.github/workflows/live-smoke.yml`）を追加。workflow_dispatch専用で、`confirm_live_requests=true`でAPI最大2回、`check_single_tile=true`ならOSMタイル1枚のHTTP確認を追加。結果は観測レポートに記録し、外部障害をコードテスト失敗として扱わない。実行前の時点では実通信成功を主張しない。

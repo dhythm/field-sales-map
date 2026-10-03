@@ -6,3 +6,5 @@ playwright-report/
 !.env.example
 *.png
 *.webm
+
+live-smoke-results/

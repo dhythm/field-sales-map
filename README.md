@@ -134,3 +134,13 @@ CIはpush・pull requestで実行します。各commitの結果は[GitHub Action
 - **実通信検証**：この環境でAPIスモークは403（envoy）になり、実API成功・実CORS・実タイル表示は未確認。接続可能な環境で少数リクエストの実機確認が必要です。
 - **公開サイト**：ホストと利用規模の確認が必要。未承認のデプロイ・有料契約・認証情報作成は行っていません。
 - Safari/Firefoxおよび実スマートフォン端末は未検証。モバイル検証はChromiumのPixel 7エミュレーションです。
+
+## 手動の実通信スモーク
+
+[Manual live smoke](https://github.com/dhythm/field-sales-map/actions/workflows/live-smoke.yml)は`workflow_dispatch`専用です。通常CIや定期実行では外部サービスにアクセスしません。
+
+GitHubの「Run workflow」で`confirm_live_requests=true`を選ぶと、公開の東京駅座標についてHTTPで1回（limit=2）、実アプリのChromium検索で1回（半径500m・上限50件）だけ実APIを確認します。リトライはありません。CORSはHTTPのOriginヘッダーと、セキュリティ設定を変更しない実ブラウザfetchで区別して検証します。
+
+`check_single_tile=true`を追加すると、識別可能なUser-Agent・Refererで東京駅のOSMタイル1画像だけをHTTP確認します。ブラウザのタイル取得は遮断し、地図移動・走査・プリフェッチはしません。これは**タイル1枚のHTTP確認**であり、実地図全体の表示確認ではありません。
+
+結果はworkflow summaryと`manual-live-smoke` artifact内の`report.json`・画面に保存します。外部API障害をコードテスト失敗と混同しないため、workflowの緑色だけで成功と判断せず、各`outcome`・HTTP status・CORS・表示件数を確認してください。メモ・顧客情報・APIレスポンス全文・認証情報は収集しません。

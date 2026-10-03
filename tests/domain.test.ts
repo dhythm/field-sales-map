@@ -174,3 +174,32 @@ it("取り込みの不正座標・フィールド欠落を正規化で隠さず�
     ).toThrow();
   }
 });
+
+it("座標の空白や配列をゼロ地点として受け入れない", () => {
+  for (const value of [
+    " ",
+    "\t\n",
+    [],
+    [0],
+    [35],
+    {},
+    false,
+    true,
+    "0x23",
+    NaN,
+    Infinity,
+  ]) {
+    expect(normalizeFacility({ lat: value, lng: value })).toMatchObject({
+      lat: null,
+      lng: null,
+    });
+  }
+  expect(normalizeFacility({ lat: " 35.5 ", lng: "1.397e2" })).toMatchObject({
+    lat: 35.5,
+    lng: 139.7,
+  });
+  expect(normalizeFacility({ lat: 0, lng: "0" })).toMatchObject({
+    lat: 0,
+    lng: 0,
+  });
+});

@@ -33,7 +33,11 @@ const strings = (v: unknown) =>
     ? [...new Set(v.filter((s): s is string => typeof s === "string"))]
     : [];
 function coordinate(v: unknown, bound: number): number | null {
-  if (v === "" || v === null || v === undefined || typeof v === "boolean")
+  if (typeof v !== "number" && typeof v !== "string") return null;
+  if (
+    typeof v === "string" &&
+    !/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?$/i.test(v.trim())
+  )
     return null;
   const n = Number(v);
   return Number.isFinite(n) && Math.abs(n) <= bound ? n : null;
